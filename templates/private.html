@@ -1,0 +1,297 @@
+{% extends "layout.html" %}
+{% block content %}
+<div id="bar" class="col-xs-12">
+	<div class="col-md-8">
+		<h1 id="title">Planner;</h1>
+	</div>
+	<div class="col-md-3">
+		
+	</div>
+	<div class="col-md-1"><a href="{{url_for('users.logout')}}" id="logout_link">Logout</a></div>
+</div>
+<div class="container-fluid col-md-3 no_padding" id="left_part">
+	<div class="col-xs-12" id="schedule_head">
+	<center>
+		<a onclick="open_map();"> Check air quality at your school</a>
+		<h1 id="weekday" class="day_and_date"></h1>
+		<h3 id="date" class="day_and_date"></h3>
+	</center>
+	</div>
+	<div class="col-xs-12" id="schedule_body">
+		{% for l in lessons_by_day[today]%}
+		<div class="col-xs-12 lesson_cells">
+			<h2 style="color: {{absolutely_all_subjects[l.subject-1].color}}">{{absolutely_all_subjects[l.subject-1].subject}}</h2>
+			<h3>{{l.get_times_string()}}</h3>
+		</div>
+		{% endfor %}
+		<div id="manage_button" class="cursor_change" onclick="show_add_lessons();">
+			<center>
+				<h3 id="button_text">
+					<span class="material-icons icon">
+						edit
+					</span> Manage
+				</h3>
+			</center>
+		</div>
+	</div>
+</div>
+<div class="container-fluid col-md-9" id="assignment_box">
+	<div class="col-xs-12" id="sort_bar">
+		Sort by: 
+		<input type="radio" name="sort" value="deadline" onchange="sort_assignments();" checked> Deadline
+		<input type="radio" name="sort" value="difficulty" onchange="sort_assignments();"> Difficulty
+		<input type="radio" name="sort" value="subject" onchange="sort_assignments();"> Subject
+
+		<span id="done_checkbox"><input type="checkbox" name="show_done" onchange="show_done();"> Show done</span>
+	</div>
+	<div id="add_button" class="cursor_change" onclick="show_add_assignment();">
+		<center>
+			<h3 id="button_text">
+			<span class="material-icons icon" style="font-size: 1.5em;">
+				control_point
+			</span> Add
+			</h3>
+		</center>
+	</div>
+	<div class="col-xs-12" id="sorted_by_deadline">
+	{% for a in all_assignments_by_deadline %}
+		<div id="{{a.id}}" class="assignment_box col-sm-4 cursor_change {% if a.is_done %} done {% endif %}" 
+		{% if not a.is_done %} onclick="
+		my_div = document.getElementById('{{a.id}}'+'box');
+		other_div =document.getElementById('opaque_div');
+		my_div.style.display = 'block';
+		other_div.style.display = 'block';" {% endif %} {% if a.is_done %} hidden {% endif %}>
+			<h2 style="color: {{absolutely_all_subjects[a.subject-1].color}}">{{a.title}}</h2>
+			<h3 style="color: {{absolutely_all_subjects[a.subject-1].color}}">{{absolutely_all_subjects[a.subject-1].subject}}</h3>
+			<h5 {% if a.deadline_passed() %} style="color: red;" {% endif %}>Deadline: {{a.d_date}}/{{a.d_month}}/{{a.d_year}}</h5>
+			<h4>{{a.description}}</h4>
+		</div>
+	{% endfor %}
+	</div>
+	<div class="col-xs-12" id="sorted_by_difficulty" hidden>
+	{% for a in all_assignments_by_difficulty %}
+		<div id="{{a.id}}" class="assignment_box col-sm-4 cursor_change {% if a.is_done %} done {% endif %}" 
+		{% if not a.is_done %} onclick="
+		my_div = document.getElementById('{{a.id}}'+'box');
+		other_div =document.getElementById('opaque_div');
+		my_div.style.display = 'block';
+		other_div.style.display = 'block';" {% endif %} {% if a.is_done %} hidden {% endif %}>
+			<h2 style="color: {{absolutely_all_subjects[a.subject-1].color}}">{{a.title}}</h2>
+			<h3 style="color: {{absolutely_all_subjects[a.subject-1].color}}">{{absolutely_all_subjects[a.subject-1].subject}}</h3>
+			<h5 {% if a.deadline_passed() %} style="color: red;" {% endif %}>Deadline: {{a.d_date}}/{{a.d_month}}/{{a.d_year}}</h5>
+			<h4>{{a.description}}</h4>
+		</div>
+	{% endfor %}
+	</div>
+	<div class="col-xs-12" id="sorted_by_subject" hidden>
+	{% for a in all_assignments_by_subject %}
+		<div id="{{a.id}}" class="assignment_box col-sm-4 cursor_change {% if a.is_done %} done {% endif %}" 
+		{% if not a.is_done %} onclick="
+		my_div = document.getElementById('{{a.id}}'+'box');
+		other_div =document.getElementById('opaque_div');
+		my_div.style.display = 'block';
+		other_div.style.display = 'block';" {% endif %} {% if a.is_done %} hidden {% endif %}>
+			<h2 style="color: {{absolutely_all_subjects[a.subject-1].color}}">{{a.title}}</h2>
+			<h3 style="color: {{absolutely_all_subjects[a.subject-1].color}}">{{absolutely_all_subjects[a.subject-1].subject}}</h3>
+			<h5 {% if a.deadline_passed() %} style="color: red;" {% endif %}>Deadline: {{a.d_date}}/{{a.d_month}}/{{a.d_year}}</h5>
+			<h4>{{a.description}}</h4>
+		</div>
+	{% endfor %}
+	</div>
+</div>
+
+<div id="add_assignment_form" class="box hidden_forms">
+	<h2> New Assignment </h2>
+	<form action="{{url_for('users.add_assignment')}}" method="POST">
+		<h3>Title</h3>
+		<input type="text" name="title"><br>
+		<h3>Subject</h3>
+		<select name="subject">
+			{% for s in all_subjects %}
+				<option value="{{s.id}}">{{s.subject}}</option>
+			{% endfor %}
+		</select>
+		<a onclick="hide_add_assignment(); show_add_subject();">Add subject +</a><br>
+		<h3>Description</h3>
+		<textarea name="description"></textarea><br>
+		<h3>Deadline</h3>
+		<input type="date" name="deadline"><br>
+		<h3>Difficulty</h3>
+		<input type="radio" name="difficulty" value="0"> Easy
+		<input type="radio" name="difficulty" value="1"> Medium
+		<input type="radio" name="difficulty" value="2"> Hard<br><br>
+		<input type="submit" name="submit" class="cursor_change"> <a onclick="hide_add_assignment();">Cancel</a>
+	</form>
+</div>
+
+<div id="add_subject_form" class="box hidden_forms">
+	<h2> New Subject </h2>
+	<form action="{{url_for('users.add_subject')}}" method="POST">
+		<h3>Subject</h3>
+		<input type="text" name="name"><br>
+		<h3>Color</h3>
+		<input type="color" name="color"><br><br>
+		<input type="submit" name="submit"> <a onclick="hide_add_subject();">Cancel</a>
+	</form>
+</div>
+
+{% for a in all_assignments%}
+	<div id="{{a.id}}box" class="box hidden_forms">
+	<center>
+		<h2>{{a.title}}</h2>
+		<a href="{{url_for('users.mark_assignment',assignment_id=a.id)}}"><span class="material-icons icon">done</span> Mark as Done<br></a>
+		<a href="{{url_for('users.remove_assignment',assignment_id=a.id)}}"><span class="material-icons icon">delete</span> Delete Assignment</a><br><br>
+		<a onclick="
+			my_div = document.getElementById('{{a.id}}'+'box');
+			other_div =document.getElementById('opaque_div');
+			my_div.style.display = 'none';
+			other_div.style.display = 'none';
+		">Cancel</a>
+	</center>
+	</div>
+{% endfor %}
+
+<div id="add_lessons_form" class="box hidden_forms">
+	<h2> Add Lessons </h2>
+		<h3>Day: </h3>
+		<select name="week_day" id="weekday_select" onchange="update_lessons_by_day();">
+		{% if today == 6 %}
+			<option value="6" selected>Sunday</option>
+		{% else %}
+			<option value="6">Sunday</option>
+		{% endif %}
+		{% if today == 0 %}
+			<option value="0" selected>Monday</option>
+		{% else %}
+			<option value="0">Monday</option>
+		{% endif %}
+		{% if today == 1 %}
+			<option value="1" selected>Tuesday</option>
+		{% else %}
+			<option value="1">Tuesday</option>
+		{% endif %}
+		{% if today == 2 %}
+			<option value="2" selected>Wednesday</option>
+		{% else %}
+			<option value="2">Wednesday</option>
+		{% endif %}
+		{% if today == 3 %}
+			<option value="3" selected>Thursday</option>
+		{% else %}
+			<option value="3">Thursday</option>
+		{% endif %}
+		{% if today == 4 %}
+			<option value="4" selected>Friday</option>
+		{% else %}
+			<option value="4">Friday</option>
+		{% endif %}
+		{% if today == 5 %}
+			<option value="5" selected>Saturday</option>
+		{% else %}
+			<option value="5">Saturday</option>
+		{% endif %}
+		</select><br>
+		<form action="{{url_for('users.add_lessons_by_day')}}" method="POST">
+		<input type="text" name="number_of_new" id="NEW_LESSONS" value="0" hidden>
+		<h3>Lessons: </h3>
+		{% for d in numbers %}
+			<div id="day{{d}}" class="day_lessons" {% if today != d %}hidden{% endif%}>
+				{% for l in lessons_by_day[d] %}
+				<label>Subject: </label>
+				<select name="subject{{l.id}}">
+					<option value="{{l.subject}}">{{l.get_subject().subject}}</option>
+					{% for s in l.get_subject().get_other_subjects() %}
+						<option value="{{s.id}}">{{s.subject}}</option>
+					{% endfor %}
+				</select>
+				<label>Start time: </label>
+				<input type="time" name="start_time{{l.id}}" value="{{l.get_times_string()[0:5]}}">
+				<label>End time :</label>
+				<input type="time" name="end_time{{l.id}}" value="{{l.get_times_string()[6:11]}}">
+				<input type="text" name="day_of_the_week{{l.id}}" value="{{d}}" hidden>
+				<a onclick="
+					if (confirm('Are you sure you want to delete {{l.get_subject()}} at {{l.get_times_string()[0:5]}}?')){
+						location.href = '/delete_lesson/{{l.id}}'
+					};"
+				><span class="material-icons icon">clear</span></a><br>	
+				{%endfor%}
+			</div>
+		{% endfor%}
+		<a onclick="
+			NEW_LESSONS = NEW_LESSONS+1;
+			document.getElementById('NEW_LESSONS').value=NEW_LESSONS;
+			var the_br = document.createElement('br');
+			var the_day = document.getElementById('weekday_select').value;
+			var the_parent = document.getElementById('day'+the_day);
+			the_parent.appendChild(the_br);
+			var new_subject_label = document.createElement('label');
+			new_subject_label.innerHTML = 'Subject: ';
+			the_parent.appendChild(new_subject_label);
+			var new_select = document.createElement('select');
+			new_select.name = 'new_subject'+NEW_LESSONS;
+			{% for o in all_subjects %}
+				var new_option = document.createElement('option');
+				new_option.value = '{{o.id}}';
+				new_option.innerHTML = '{{o.subject}}';
+				new_select.appendChild(new_option);
+			{% endfor %}
+			the_parent.appendChild(new_select);
+			var new_start_label = document.createElement('label');
+			new_start_label.innerHTML = ' Start time: ';
+			the_parent.appendChild(new_start_label);
+			var new_start_time = document.createElement('input');
+			new_start_time.type = 'time';
+			new_start_time.name='new_start_time'+NEW_LESSONS;
+			new_start_time.required = true;
+			the_parent.appendChild(new_start_time);
+			var new_end_label = document.createElement('label');
+			new_end_label.innerHTML = ' End time: ';
+			the_parent.appendChild(new_end_label);
+			var new_end_time = document.createElement('input');
+			new_end_time.type = 'time';
+			new_end_time.name='new_end_time'+NEW_LESSONS;
+			new_end_time.required = true;
+			the_parent.appendChild(new_end_time);
+			var new_day_of_the_week = document.createElement('input')
+			new_day_of_the_week.type = 'text';
+			new_day_of_the_week.value = the_day;
+			new_day_of_the_week.name = 'new_day_of_the_week'+NEW_LESSONS;
+			the_parent.appendChild(new_day_of_the_week)
+			new_day_of_the_week.style.display = 'none';
+			var delete_lesson = document.createElement('a');
+			var delete_span = document.createElement('span');
+			delete_span.className = 'material-icons icon';
+			delete_span.innerHTML = 'clear';
+			delete_lesson.appendChild(delete_span);
+			delete_lesson.onclick = function(){
+				NEW_LESSONS = NEW_LESSONS-1;
+				document.getElementById('NEW_LESSONS').value = NEW_LESSONS;
+				the_parent.removeChild(the_br);
+				the_parent.removeChild(new_subject_label);
+				the_parent.removeChild(new_select);
+				the_parent.removeChild(new_start_label);
+				the_parent.removeChild(new_start_time);
+				the_parent.removeChild(new_end_label);
+				the_parent.removeChild(new_end_time);
+				the_parent.removeChild(new_day_of_the_week);
+				the_parent.removeChild(delete_lesson);
+			}
+			the_parent.appendChild(delete_lesson);
+
+		">Add Lessons +</a><br><br>
+		<input type="submit" name="submit" class="cursor_change"> <a onclick="hide_add_lessons();">Cancel</a>
+	</form>
+</div>
+
+<div id="opaque_div">
+	
+</div>
+
+<div id="map_box" class="box" hidden>
+	<h2 id="map_title"> Check Air Quality </h2> Click on desired location. <a id="map_close_link" onclick="close_map();">Close</a>
+		<div id="map-div"></div>
+		<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBjFjC69PiJWIE69im4A9XDj3z2CQYZoG4&callback=initMap">
+</script>
+</div>
+{% endblock %}
